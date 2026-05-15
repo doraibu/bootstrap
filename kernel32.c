@@ -191,7 +191,7 @@ static void copy_vmlinuz(void)
     print("[kernel32] vmlinuz OK!\n");
 }
 
-void kernel32_main(void)
+void kmain32(void)
 {
     for (int i = 0; i < 80 * 25; i++) vga[i] = 0x0700;
     vga_col = 0; vga_row = 0;
