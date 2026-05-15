@@ -75,7 +75,7 @@ static void ata_read_sectors(uint32_t lba, uint32_t count, void* dst)
 	outb(ATA_SECTOR_CNT, n);
 	outb(ATA_LBA_LO, (uint8_t)(lba));
 	outb(ATA_LBA_MID, (uint8_t)(lba >> 8));
-	outb(ATA_LBA_HI, (uint8_t)(lba >> 8));
+	outb(ATA_LBA_HI, (uint8_t)(lba >> 16));
 	outb(ATA_CMD, ATA_CMD_READ);
 
 	for (uint8_t i = 0; i < n; i++) {
@@ -221,6 +221,8 @@ void kernel32_main(void)
     print_hex(ROOTFS_DST);
     print("\n");
 
+    copy_vmlinuz();
+    
     print("[kernel32] Configurando paging + GDT...\n");
     setup_paging();
     setup_gdt64();

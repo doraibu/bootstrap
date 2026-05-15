@@ -15,7 +15,7 @@
 PENDRIVE ?= /dev/sdX
 
 # Tamanho do kernel32 em setores (deve coincidir com KERNEL32_SECTORS no stage1.asm)
-KERNEL32_SECTORS = 127
+KERNEL32_SECTORS = 200
 
 # Tamanho do rootfs em setores — calcule com:
 #   ROOTFS_SECTORS=$(( $(du -sb /seu/rootfs | cut -f1) / 512 + 1 ))
@@ -140,13 +140,9 @@ install: all
 	@echo "[4/5] Escrevendo vmlinuz ($(VMLINUZ_PATH))..."
 	dd if=$(VMLINUZ_PATH) of=$(PENDRIVE) bs=512 seek=$(VMLINUZ_LBA) conv=notrunc
 
-	@echo "[5/5] Copiando rootfs ($(ROOTFS_PATH)) → isso pode demorar..."
-	@echo "      Rootfs: $(ROOTFS_SECTORS) setores = $$(( $(ROOTFS_SECTORS) * 512 / 1024 / 1024 ))MB"
-	tar -C $(ROOTFS_PATH) -c . | dd of=$(PENDRIVE) bs=512 seek=$(ROOTFS_LBA) conv=notrunc
-	@echo ""
-	@echo "[OK] Pendrive pronto! Boot: $(PENDRIVE)"
-	@echo "     Lembre de ajustar ROOTFS_LBA no longmode_entry.asm se mudar o layout"
+	@echo "[5/5] Copiando rootfs ($(ROOTFS_PATH)) como CPIO → isso pode demorar..."
+	cd $(ROOTFS_PATH) && find . -depth | cpio -H newc -o | dd of=$(PENDRIVE) bs=512 seek=$(ROOTFS_LBA) conv=notrunc
 
 # --- Limpeza ----------------------------------------------------------------
 clean:
-	rm -f *.bin *.elf *.o kernel32.ld
+	rm -f *.bin *.elf *.o sysld.ld
