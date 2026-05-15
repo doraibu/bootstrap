@@ -120,7 +120,7 @@ protected_mode:
         mov %ax, %gs
         mov $0x90000, %esp
 
-        mov $10000, %eax
+        mov $0x10000, %eax
         jmp *%eax
 
         .org 510
