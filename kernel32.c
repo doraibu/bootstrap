@@ -1,11 +1,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define PAGETABLE_BASE 0x100000UL
-#define ROOTFS_DST 0x200000UL
+#define PAGETABLE_BASE  0x100000UL
+#define ROOTFS_DST      0x200000UL
+#define VMLINUZ_DST     0x1000000UL
 
-#define KERNEL32_SECTOR 127
+#define KERNEL32_SECTORS 127
 #define ROOTFS_START_LBA (1 + KERNEL32_SECTORS)
+#define VMLINUZ_LBA 160
+#define VMLINUZ_SECTORS 512
 
 #ifndef ROOTFS_SECTORS
 #define ROOTFS_SECTORS (4 * 1024 * 1024)
@@ -20,6 +23,7 @@ static inline uint8_t inb(uint16_t port)
 {
     uint8_t val;
     __asm__ volatile("inb %1, %0" : "=a"(val) : "Nd"(port));
+    return val;
 }
 
 static uint16_t* vga = (uint16_t*)0xB8000;
@@ -41,7 +45,7 @@ static void print_hex(uint32_t v)
 {
     static const char hex[] = "0123456789ABCDEF";
     print("0x");
-    for (int = 28; i >= 0; i -= 4)
+    for (int i = 28; i >= 0; i -= 4)
         vga_putc(hex[(v >> i) & 0xF]);
 }
 
@@ -57,15 +61,8 @@ static void print_hex(uint32_t v)
 #define ATA_STATUS      0x1F7
 #define ATA_CMD_READ    0x20
 
-static void ata_wait_ready(void)
-{
-    while (inb(ATA_STATUS) & 0x80);
-}
-
-static void ata_wait_drq(void)
-{
-    while (!(inb(ATA_STATUS) & 0x08));
-}
+static void ata_wait_ready(void) { while (inb(ATA_STATUS) & 0x80); }
+static void ata_wait_drq(void)   { while (!(inb(ATA_STATUS) & 0x08)); }
 
 static void ata_read_sectors(uint32_t lba, uint32_t count, void* dst)
 {
@@ -81,7 +78,7 @@ static void ata_read_sectors(uint32_t lba, uint32_t count, void* dst)
 	outb(ATA_LBA_HI, (uint8_t)(lba >> 8));
 	outb(ATA_CMD, ATA_CMD_READ);
 
-	for (uint8_t i = 0; i < n; j++) {
+	for (uint8_t i = 0; i < n; i++) {
 	    ata_wait_drq();
 	    for (int j = 0; j < 256; j++) {
 		uint16_t w;
@@ -172,6 +169,28 @@ static void __attribute__((noreturn)) jump_to_longmode(uint64_t entry64)
     __builtin_unreachable();
 }
 
+static void copy_vmlinuz(void)
+{
+    print("[kernel32] Copiando vmlinuz... LBA =");
+    print_hex(VMLINUZ_LBA);
+    print(" setores=");
+    print_hex(VMLINUZ_SECTORS);
+    print("\n");
+
+    uint8_t* dst = (uint8_t*)VMLINUZ_DST;
+    uint32_t lba = VMLINUZ_LBA;
+    uint32_t remaining = VMLINUZ_SECTORS;
+
+    while (remaining > 0) {
+	uint32_t chunk = (remaining > 255) ? 255 : remaining;
+	ata_read_sectors(lba, chunk, dst);
+	dst += chunk * 512;
+	lba += chunk;
+	remaining -= chunk;
+    }
+    print("[kernel32] vmlinuz OK!\n");
+}
+
 void kernel32_main(void)
 {
     for (int i = 0; i < 80 * 25; i++) vga[i] = 0x0700;
@@ -179,20 +198,12 @@ void kernel32_main(void)
 
     print("[kernel32] Protected mode OK\n");
 
-    print("[kernel32] Copiando rootfs pra RAM... LBA=");
+    print("[kernel32] Copiando rootfs... LBA=");
     print_hex(ROOTFS_START_LBA);
-    print(", setores=");
+    print(" setores=");
     print_hex(ROOTFS_SECTORS);
     print("\n");
 
-    /*
-     * ATENÇÃO: ROOTFS_SECTORS deve ser o tamanho real do seu rootfs!
-     * Calcule com: find /seu/rootfs | wc -c  ou  du -sb /seu/rootfs
-     * depois converta pra setores: bytes / 512 (arredonde pra cima)
-     *
-     * ATA PIO é lento (~3MB/s), pra 2GB isso é ~10min.
-     * Se quiser mais rápido, podemos implementar DMA (UDMA) depois.
-     */
     uint8_t *dst = (uint8_t *)ROOTFS_DST;
     uint32_t lba = ROOTFS_START_LBA;
     uint32_t remaining = ROOTFS_SECTORS;
@@ -204,19 +215,16 @@ void kernel32_main(void)
         lba       += chunk;
         remaining -= chunk;
 
-        if (((lba - ROOTFS_START_LBA) % 65536) == 0) {
-            print(".");
-        }
+        if (((lba - ROOTFS_START_LBA) % 65536) == 0) print(".");
     }
-
-    print("\n[kernel32] Rootfs copiado OK! Base: ");
+    print("\n[kernel32] Rootfs OK! Base: ");
     print_hex(ROOTFS_DST);
     print("\n");
 
-    print("[kernel32] Configurando page tables (identity map 4GB)...\n");
+    print("[kernel32] Configurando paging + GDT...\n");
     setup_paging();
     setup_gdt64();
-    print("[kernel32] OK! Saltando pra long mode...\n");
+    print("[kernel32] Saltando para Long Mode...\n");
 
     #define LONGMODE_STUB  0x180000UL
     jump_to_longmode(LONGMODE_STUB);
