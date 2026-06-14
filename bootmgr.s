@@ -97,7 +97,7 @@ gdt_end:
 dap:
         .byte 0x10
         .byte 0x00
-        .word 1
+        .word 64
         .word 0x0000
         .word 0x1000
         .quad 1
