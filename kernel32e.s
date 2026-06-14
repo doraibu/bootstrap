@@ -3,8 +3,6 @@
         .global kstart
 
 kstart:
-	_bss_start
-	_bss_end
         mov $_bss_start, %edi
         mov $_bss_end, %ecx
         sub %edi, %ecx

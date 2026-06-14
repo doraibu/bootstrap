@@ -46,7 +46,7 @@ static void __attribute__((noreturn)) jump_to_longmode(uint32_t entry64)
 {
   __asm__ volatile("mov %0, %%cr3" :: "r"((uint32_t)PAGETABLE_BASE));
   uint32_t cr4;
-  __asm__ volatile("mov %%cr4, %0" :: "=r"(cr4));
+  __asm__ volatile("mov %%cr4, %0" : "=r"(cr4));
   cr4 |= (1 << 5);
   __asm__ volatile("mov %0, %%cr4" :: "r"(cr4));
 
