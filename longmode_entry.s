@@ -32,7 +32,7 @@ _start:
 	movb $0xFF, 0x210(%rbx)
 
 	movl $ROOTFS_DST, 0x218(%rbx)
-	movl $ROOTS_SIZE_BYTES, 0x21C(%rbx)
+	movl $ROOTFS_SIZE_BYTES, 0x21C(%rbx)
 
 	lea kernel_cmdline(%rip), %rsi
 	mov $CMDLINE_DST, %rdi
