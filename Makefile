@@ -10,7 +10,7 @@ QEMU    = qemu-system-x86_64
 
 CFLAGS32  = -m32 -ffreestanding -fno-stack-protector -fno-pic \
             -fno-builtin -nostdlib -O2 -Wall -Wextra
-LDFLAGS32 = -m elf_i386 -T kernel32.ld
+LDFLAGS32 = -m elf_i386 -T linker.ld
 
 .PHONY: all clean run
 
@@ -21,7 +21,7 @@ stage1.bin: bootmgr.s
 	$(LD) -m elf_i386 -Ttext 0x7C00 --oformat binary -o $@ stage1.o
 	@truncate -s 512 $@
 
-kernel32.bin: kernel32e.s kernel32.c kernel32.ld
+kernel32.bin: kernel32e.s kernel32.c linker.ld
 	$(CC) -m32 -c -o kernel32e.o kernel32e.s
 	$(CC) $(CFLAGS32) -c -o kernel32.o kernel32.c
 	$(LD) $(LDFLAGS32) -o kernel32.elf kernel32e.o kernel32.o
@@ -52,7 +52,7 @@ $(IMAGE): stage1.bin kernel32.bin longmode_entry.bin $(VMLINUZ_PATH) $(INITRAMFS
 
 	@# O INITRAMFS/ROOTFS (0x4000000)
 	dd if=$(INITRAMFS_PATH) of=$(IMAGE) seek=2048 conv=notrunc status=none
-	@echo "[OK] $(IMAGE) generated successfully!"
+	@echo "[OK] $(IMAGE) generated successful!"
 
 run: $(IMAGE)
 	$(QEMU) -drive format=raw,file=$(IMAGE) -m 4G -cpu host -enable-kvm
