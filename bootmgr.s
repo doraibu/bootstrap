@@ -14,12 +14,9 @@ _start:
 
         mov $0x2401, %ax
         int $0x15
-        jc a20_fail
+        jc a20_fallback
         jmp default
         
-a20_fail:
-        call a20_fallback
-
 a20_fallback:
         in $0x92, %al
         or $0x02, %al
@@ -34,7 +31,7 @@ a20_fallback:
         out %al, $0x60
 
         call wait_input
-        ret
+        jmp default
 
 wait_input:
         in $0x64, %al
