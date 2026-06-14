@@ -3,15 +3,14 @@
         .global kstart
 
 kstart:
-        extern _bss_start
-        extern _bss_end
+	_bss_start
+	_bss_end
         mov $_bss_start, %edi
         mov $_bss_end, %ecx
         sub %edi, %ecx
         xor %eax, %eax
         rep stosb
 
-        extern kmain32
         call kmain32
 
         cli
