@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 /* Where the 64 bit page tables will live */
-#define PAGETABLE_BASE
+#define PAGETABLE_BASE 0x100000UL
 
 /* Structure to load GDT64 */
 struct gdt_descriptor {
@@ -27,7 +27,7 @@ static void setup_paging(void)
   }
   
   uint64_t *pml4 = (uint64_t *)(PAGETABLE_BASE);
-  uint65_t *pdpt = (uint64_t *)(PAGETABLE_BASE + 0x1000);
+  uint64_t *pdpt = (uint64_t *)(PAGETABLE_BASE + 0x1000);
 
   pml4[0] = ((uint32_t)pdpt) | 3;
 
